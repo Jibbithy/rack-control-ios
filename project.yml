@@ -1,0 +1,146 @@
+# The Xcode project is GENERATED from this file by xcodegen, not hand-edited.
+# A .pbxproj is 700 lines of UUIDs that no human reviews and every merge
+# conflicts on; this is the same information in a form that can be read.
+#   brew install xcodegen && xcodegen generate
+name: RackControl
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+targets:
+  RackControl:
+    type: application
+    platform: iOS
+    sources: [RackControl]
+    # THE ORDER OF keychain-access-groups IS LOAD-BEARING - see TokenStore. The
+    # first entry is where SecItemAdd puts an item that names no group, so the
+    # shared group must be first for the token to be written somewhere Agents
+    # can read it. The app's own bundle group stays implicitly searchable, which
+    # is how the pre-sharing token is still found on the first launch after this
+    # ships.
+    # PUSH: THE ENTITLEMENT IS THE WHOLE CONFIGURATION, and it has to be in
+    # THIS file rather than in RackControl.entitlements - see the property
+    # below. `xcodebuild -allowProvisioningUpdates` does the rest by itself:
+    # it enabled Push Notifications on the App ID, moved the target off the
+    # team wildcard profile (a wildcard App ID cannot carry push) onto an
+    # explicit com.example.rackcontrol one, and minted a profile granting
+    # aps-environment. No step in the developer portal was needed.
+    #
+    # It does NOT do that against a stale profile cache. If a build ever comes
+    # out without push, delete the cached profiles and build again:
+    #   rm ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision
+    entitlements:
+      path: RackControl.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.example.shared
+        # HERE, NOT IN RackControl.entitlements. xcodegen REGENERATES that
+        # file from this block on every `xcodegen generate`, so a key added to
+        # the plist by hand survives exactly until the next regeneration - and
+        # then the build quietly signs without it again.
+        #
+        # "development" is correct for every build this rack signs and is NOT
+        # a debug-only value: a Release build installed with a development
+        # profile still gets a SANDBOX device token. PushRegistrar reads this
+        # back out of the embedded profile at runtime and tells the hub which
+        # APNs host to use rather than guessing from #if DEBUG - see
+        # apsEnvironment there, and hub/push.js for what guessing wrong costs.
+        aps-environment: development
+        # THIS LINE CHANGES WHICH APP ID THE BUILD USES. A wildcard App ID
+        # (TEAMID.*) cannot carry Push Notifications - Apple does not
+        # allow it - so the moment this entitlement exists, automatic signing
+        # stops using the team wildcard profile and mints an EXPLICIT App ID
+        # for com.example.rackcontrol with push enabled. That needs
+        # -allowProvisioningUpdates on the xcodebuild line, which the build
+        # command here has always passed.
+        #
+        # "development" IS CORRECT FOR EVERY BUILD THIS RACK SIGNS, and is not
+        # a debug-only value: a Release build installed with a development
+        # profile still gets a SANDBOX device token. PushRegistrar reads this
+        # back out of the embedded profile at runtime and tells the hub which
+        # APNs host to use, rather than guessing from #if DEBUG - see
+        # apsEnvironment, and hub/push.js for what guessing wrong costs.
+    # OPTS OUT OF LIQUID GLASS, for the Deck Cream design (rack-os-design).
+    # Under glass the tab bar is a floating rounded capsule and every toolbar
+    # button sits in a glass pill - none of it reachable by UIAppearance - and
+    # Deck is square, flat and ink-edged. With this key iOS 26 draws the classic
+    # bars, which DeckChrome (DeckLocal.swift) styles as rail strips.
+    #
+    # APPLE HAS SAID THIS KEY GOES AWAY in a later major release. When iOS
+    # stops honouring it the app still works; the bars just turn back into
+    # glass. xcodegen WRITES RackControl/Info.plist from this block (Xcode
+    # merges it with the INFOPLIST_KEY_* settings below), so edit it here.
+    info:
+      path: RackControl/Info.plist
+      properties:
+        UIDesignRequiresCompatibility: true
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""  # set your own Apple team ID to sign for a device
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.rackcontrol
+        # Xcode synthesises Info.plist from the INFOPLIST_KEY_* settings below,
+        # but only when this is on - without it the build fails at code signing
+        # with "the target does not have an Info.plist file".
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: Rack Control
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        # Face ID gates the app because the token behind it can restart
+        # containers on atlas. Without this string iOS kills the app on the
+        # first biometric prompt rather than showing one.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Rack Control
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        SWIFT_VERSION: "6.0"
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        TARGETED_DEVICE_FAMILY: "1"
+    postBuildScripts:
+      # AN APP THAT CANNOT RECEIVE A NOTIFICATION LOOKS EXACTLY LIKE ONE THAT
+      # HAS NOTHING TO SAY, and that is why this is a build failure rather
+      # than a note in a README. The failure this actually caught: the
+      # aps-environment key was added to RackControl.entitlements by hand, and
+      # the next `xcodegen generate` regenerated that file from project.yml
+      # and dropped it. The build stayed green, the app installed and ran, and
+      # the only symptom would have been a phone that never buzzed - weeks
+      # later, with nothing to grep for.
+      #
+      # READS THE .xcent, NOT THE SIGNED BUNDLE. `codesign -d` on the product
+      # is the obvious check and it does not work here: ENABLE_USER_SCRIPT_SANDBOXING
+      # is YES, so codesign is denied read on the .app and reports an EMPTY
+      # entitlement set - which this script would read as "push is missing" on
+      # every build, forever. The .xcent is the exact plist Xcode hands to
+      # `codesign --entitlements`, so it is what actually ships, and declaring
+      # it as an input is what the sandbox wants.
+      - name: Verify the push entitlement survived signing
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(SRCROOT)/RackControl.entitlements
+          - $(TEMP_DIR)/$(PRODUCT_NAME).app.xcent
+        script: |
+          set -eu
+          # DEVICE BUILDS ONLY. The Simulator has no APNs at all, so Xcode
+          # strips aps-environment out of the .xcent it signs there - which
+          # this check reads as "the profile does not grant it" and fails the
+          # build. Left in, it turns any simulator build red on a machine
+          # where nothing is wrong. This app has no test target today, so the
+          # bad case has never fired - it would fire the first time anyone
+          # builds for a simulator, or the day a test target is added.
+          case "${PLATFORM_NAME:-}" in *simulator) exit 0 ;; esac
+          src="$SRCROOT/RackControl.entitlements"
+          eff="$TEMP_DIR/$PRODUCT_NAME.app.xcent"
+          want=$(plutil -extract aps-environment raw -o - "$src" 2>/dev/null || true)
+          # No aps-environment in the source means push is deliberately off.
+          [ -n "$want" ] || exit 0
+          [ -f "$eff" ] || { echo "warning: no $eff to check"; exit 0; }
+          got=$(plutil -extract aps-environment raw -o - "$eff" 2>/dev/null || true)
+          if [ "$got" != "$want" ]; then
+            echo "error: the entitlements ask for aps-environment=$want, but the app is being signed with \"$got\"."
+            echo "error: The profile does not grant it. Almost always a stale profile cache:"
+            echo "error:   rm ~/Library/Developer/Xcode/UserData/Provisioning\\ Profiles/*.mobileprovision"
+            echo "error: then rebuild with -allowProvisioningUpdates, which re-mints one that does."
+            exit 1
+          fi
