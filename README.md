@@ -1,5 +1,7 @@
 # Rack Control
 
+[![CI](https://github.com/Jibbithy/rack-control-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/Jibbithy/rack-control-ios/actions/workflows/ci.yml)
+
 A native iOS app for monitoring and using a home server rack. It shows node status and activity, browses and previews files, and includes notes, spending and goal tracking, all behind a biometric lock.
 
 Built with SwiftUI, WebKit, QuickLook and Swift Charts. The project has no automated tests.
